@@ -12,7 +12,13 @@ import click
 import pytz
 from appdirs import user_cache_dir
 
-from .click_common import DeviceGroup, GlobalContextObject, LiteralParamType, command
+from .click_common import (
+    DeviceGroup,
+    EnumType,
+    GlobalContextObject,
+    LiteralParamType,
+    command,
+)
 from .device import Device
 from .exceptions import DeviceException, DeviceInfoUnavailableException
 from .vacuumcontainers import (
@@ -68,6 +74,15 @@ class FanspeedE2(enum.Enum):
     Standard = 68
     Medium = 79
     Turbo = 100
+
+
+class WaterFlow(enum.Enum):
+    """Water flow strength on s5 max. """
+
+    Minimum = 200
+    Low = 201
+    High = 202
+    Maximum = 203
 
 
 ROCKROBO_V1 = "rockrobo.vacuum.v1"
@@ -640,10 +655,6 @@ class Vacuum(Device):
         """Get the status of a segment."""
         return self.send("get_segment_status")
 
-    @property
-    def raw_id(self):
-        return self._protocol.raw_id
-
     def name_segment(self):
         raise NotImplementedError("unknown parameters")
         # return self.send("name_segment")
@@ -655,6 +666,16 @@ class Vacuum(Device):
     def split_segment(self):
         raise NotImplementedError("unknown parameters")
         # return self.send("split_segment")
+
+    @command()
+    def waterflow(self) -> WaterFlow:
+        """Get water flow setting."""
+        return WaterFlow(self.send("get_water_box_custom_mode")[0])
+
+    @command(click.argument("waterflow", type=EnumType(WaterFlow)))
+    def set_waterflow(self, waterflow: WaterFlow):
+        """Set water flow setting."""
+        return self.send("set_water_box_custom_mode", [waterflow.value])
 
     @classmethod
     def get_device_group(cls):
